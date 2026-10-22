@@ -29,9 +29,48 @@ pxs-prepare 202601_PtAu --dry-run    # print the scan mapping and stop
 pxs-prepare 202601_PtAu --s3         # import straight into the bucket
 ```
 
+Before the first `--s3` import on a machine, run `pxs-prepare --s3-login`
+once (no `proposal_root`) to store the bucket credentials in `~/.aws`, the
+way `--s3` and a bare `nx5d.Proposal('s3://...')` both expect to find them:
+
+```bash
+pxs-prepare --s3-login
+```
+
+It prompts for the key, the endpoint and the region, writes an AWS profile,
+and verifies it by listing the bucket -- it is the one mode that takes no
+`proposal_root` (`--s3-bucket`/`--s3-profile` to use something other than
+the defaults), since it is not importing anything.
+
 The base path of the data share is found from `--source`, from the proposal
 folder itself, or from the `UDKM_BASE` environment variable (`PXS_BASE` is
 accepted as an alias).
+
+### Running it from inside the proposal folder
+
+`proposal_root` is a path, so it can be `.`. This is the common shape in a
+JupyterHub terminal that already starts inside the proposal's own folder:
+
+```bash
+cd ~/work/Proposals/202601_PtAu
+pxs-prepare . --single-file
+```
+
+`proposal_root` names both ends of the job: since it already holds the
+`YYYYMMDD/HHMMSS/` measurement days, it is used as the *source* (the
+"positional route" -- see [Date range](#date-range)) with no `--source`
+needed, and since no `--output-root` is given, it is also the *target*: the
+import lands right next to the data it came from. Nothing is written
+outside that one folder.
+
+`--single-file` controls the shape of that output, not where it goes: every
+scan lands in one `202601_PtAu.h5` with a `#{scan}` group per scan, instead
+of the default one `.h5` file per scan under `scans/`. Pick it for a
+proposal you intend to open as a single `nx5d.Proposal('file:///.../202601_PtAu.h5#{scan}')`
+rather than one file per scan.
+
+(argparse accepts any unambiguous prefix, so `--single` also works -- but
+`--single-file` is the documented, non-abbreviated form.)
 
 ## Date range
 
@@ -77,6 +116,36 @@ pxs-prepare 202601_PtAu --base 'P:\'
 # range: they hold every beamtime since 2011. Pass --from (and optionally
 # --to), or point at a folder that already holds the measurement days.
 ```
+
+The same applies to `.`: if the current folder does not yet hold any
+`YYYYMMDD` folders of its own, `--from` is mandatory and the import reads
+from the base path instead (the **base route**) --
+
+```bash
+cd ~/work/Proposals/201601_EuTe
+pxs-prepare . --from 2016-01-23 --to 2016-01-23
+```
+
+-- which is why that route can print lines like this, for measurement days
+nowhere near the requested window:
+
+```
+20200210: duplicate measurement day, keeping .../PilatusPumpProbe/2020/20200210 and ignoring .../PilatusPumpProbe/20200210
+```
+
+That is bookkeeping about the *acquisition-program* folder, not about your
+import. One of its program folders (here `PilatusPumpProbe`) happens to hold
+the same `YYYYMMDD` day twice -- once as a bare top-level folder, once nested
+under a year folder -- which can happen after years of hand-copying and
+re-filing on the share. `pxs-prepare` keeps one copy and discards the other
+so the day is not counted (or numbered) twice. This dedup runs across the
+*whole* program folder before `--from`/`--to` narrows anything down (listing
+every year folder is cheap; classifying every scan inside a day is not --
+see [Date range](#date-range)), so you will see it on any `--base`/base-route
+run touching that program folder, whatever window you actually asked for. It
+is almost always two copies of the same measurement, and safe to ignore; if
+you are not sure, the two paths it names are both real, so diff them
+yourself before trusting either is the complete one.
 
 ## How nx5d finds this package
 

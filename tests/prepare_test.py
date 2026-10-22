@@ -3,14 +3,14 @@ import json
 import logging
 import subprocess
 from datetime import datetime
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 import pytest
 from pxs_import.reader import read_mapping_table, renumbered
 from pxs_import.format import number_scans
 from pxs_import.sources import discover_all
 from pxs_import.prepare import (target_url_for, spice_url_for, existing_output,
-                                prepare_proposal, s3_login, main)
+                                prepare_proposal, s3_login, main, _file_url)
 from pxs_import.s3 import (manifest_url, read_manifest, write_manifest,
                            credentials_available, write_profile)
 from fixtures import write_srsm, write_trss, write_alignment
@@ -95,6 +95,16 @@ def test_target_url_for_relative_path_resolves_against_cwd():
     expected = Path('mydata').resolve().as_posix()
     assert target_url_for(Path('mydata'), single_file=False) == f'file:///{expected}/scans/{{scan}}.h5'
     assert target_url_for(Path('mydata'), single_file=True) == f'file:///{expected}/mydata.h5#{{scan}}'
+
+
+def test_file_url_does_not_double_the_posix_root_slash():
+    '''A POSIX absolute path's as_posix() already carries the leading slash
+    (unlike a resolved Windows path, which starts with a drive letter), so
+    naively gluing 'file:///' + as_posix() doubles it into 'file:////...'.
+    Seen for real on a JupyterHub container: pxs-prepare's reported target
+    was 'file:////home/jovyan/work/Proposals/202601_PtAu/...'.'''
+    posix = PurePosixPath('/home/jovyan/work/Proposals/202601_PtAu')
+    assert _file_url(posix) == 'file:///home/jovyan/work/Proposals/202601_PtAu'
 
 
 def test_s3_target_urls(tmp_path):

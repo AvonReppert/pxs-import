@@ -88,6 +88,32 @@ def _as_daystamp(value: str | None) -> str | None:
         raise SystemExit(f'not a YYYY-MM-DD date: {value!r}') from None
 
 
+def _file_url(path: Path) -> str:
+    '''Build a ``file://`` URL for an absolute path, correct on every platform.
+
+    ``path.as_posix()`` already carries the leading ``/`` for a POSIX
+    absolute path (``/home/jovyan/...``) but not for a Windows one
+    (``C:/Users/...``). Gluing a flat ``f'file:///{path.as_posix()}'``
+    therefore doubles the slash on POSIX -- ``file:////home/jovyan/...``,
+    which is what a user actually saw in a JupyterHub container -- while
+    staying correct on Windows, which is why the bug went unnoticed: this
+    repo's own tests only ever resolve paths on Windows. Normalizing to
+    exactly one leading slash before prepending the two-slash scheme keeps
+    both platforms correct.
+
+    Args:
+        path: An absolute path (the caller resolves it first).
+
+    Returns:
+        ``file:///<path>``, with exactly one slash between the scheme and
+        the path's own leading slash.
+    '''
+    posix = path.as_posix()
+    if not posix.startswith('/'):
+        posix = f'/{posix}'
+    return f'file://{posix}'
+
+
 def target_url_for(proposal_root: Path, *, single_file: bool = False,
                     output_root: Path | None = None,
                     s3_bucket: str | None = None) -> str:
@@ -124,8 +150,8 @@ def target_url_for(proposal_root: Path, *, single_file: bool = False,
         return f's3://{s3_bucket}/{proposal_root.name}/{{scan}}.zarr'
     out = (output_root or proposal_root).resolve()
     if single_file:
-        return f'file:///{out.as_posix()}/{proposal_root.name}.h5#{{scan}}'
-    return f'file:///{out.as_posix()}/scans/{{scan}}.h5'
+        return f'{_file_url(out)}/{proposal_root.name}.h5#{{scan}}'
+    return f'{_file_url(out)}/scans/{{scan}}.h5'
 
 
 def spice_url_for(proposal_root: Path, spice_dir: Path, *,
@@ -144,7 +170,7 @@ def spice_url_for(proposal_root: Path, spice_dir: Path, *,
     '''
     if s3_bucket is not None:
         return f's3://{s3_bucket}/{proposal_root.resolve().name}/spice'
-    return f'file:///{spice_dir.resolve().as_posix()}'
+    return _file_url(spice_dir.resolve())
 
 
 def existing_output(proposal_root: Path, *, single_file: bool,

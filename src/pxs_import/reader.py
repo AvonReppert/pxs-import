@@ -458,7 +458,13 @@ def scans_from_pxs(source: str | Path, *, photon_energy: float = 8048.0,
     Args:
         source: Proposal root or single date directory, as accepted by
             :func:`~pxs_import.format.discover_scans`. May be a ``str``
-            (as ``pm`` passes) or a ``Path``.
+            (as ``pm`` passes) or a ``Path``. A path containing a literal
+            ``=`` breaks nx5d's own argument parser before this function
+            ever sees it: ``pm`` tells a positional argument from a
+            ``key=value`` one by splitting every argv element on ``=`` with
+            no ``maxsplit``, so such a path is misread as a malformed kwarg.
+            Not fixable from this side of the string-resolved contract (see
+            CLAUDE.md); avoid ``=`` in proposal directory names.
         photon_energy: Forwarded to :func:`build_scan_h5like` for every scan.
         scan_format: Forwarded to
             :func:`~pxs_import.format.number_scans`.
