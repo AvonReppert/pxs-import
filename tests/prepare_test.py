@@ -497,3 +497,34 @@ def test_main_normalises_iso_dates(tmp_path, monkeypatch):
     main([str(tmp_path/'prop'), '--source', str(src),
           '--from', '2025-04-08', '--to', '2025-04-08', '--dry-run'])
     assert seen['start'] == '20250408' and seen['end'] == '20250408'
+
+
+def test_the_cli_names_itself_pxs_prepare(capsys):
+    '''`--help` and every argparse error print the program's own name.
+
+    `udkm-prepare` is the name this command had inside xraydc. After a plain
+    `pip install pxs-import` no command by that name exists, so a usage line
+    or an error that says `udkm-prepare` sends the reader to something they
+    cannot run.
+    '''
+    with pytest.raises(SystemExit):
+        main(['--help'])
+    assert capsys.readouterr().out.startswith('usage: pxs-prepare')
+
+    with pytest.raises(SystemExit):
+        main(['--not-an-option'])
+    assert capsys.readouterr().err.startswith('usage: pxs-prepare')
+
+
+def test_no_module_sends_the_user_to_the_old_console_script():
+    '''The rename has to reach the strings, not just the entry point.
+
+    Scanned over the whole package rather than over `prepare.py`: the name
+    also rides in a runtime error telling a first-time `--s3` user what to
+    run, and in docstrings that mkdocstrings publishes as the API reference.
+    '''
+    import pxs_import
+
+    offenders = [path.name for path in Path(pxs_import.__file__).parent.glob('*.py')
+                 if 'udkm-prepare' in path.read_text(encoding='utf-8')]
+    assert offenders == []

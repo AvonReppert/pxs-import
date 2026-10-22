@@ -388,7 +388,7 @@ def prepare_proposal(proposal_root: Path, *, single_file: bool = False,
     if s3_bucket is not None and fs is None:
         if not s3.credentials_available(s3_profile):
             raise RuntimeError(
-                'no S3 credentials on this machine; run `udkm-prepare --s3-login` once '
+                'no S3 credentials on this machine; run `pxs-prepare --s3-login` once '
                 'to store them in ~/.aws')
         fs = s3.filesystem(s3_profile)
 
@@ -645,7 +645,7 @@ def _validate_args(parser, args) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
-    '''CLI entry point for the ``udkm-prepare`` console script.
+    '''CLI entry point for the ``pxs-prepare`` console script.
 
     Args:
         argv: Argument list, excluding the program name (defaults to
@@ -656,7 +656,7 @@ def main(argv: list[str] | None = None) -> int:
         ``--force`` was not given.
     '''
     parser = argparse.ArgumentParser(
-        prog='udkm-prepare',
+        prog='pxs-prepare',
         description='Discover, number and import a UDKM proposal into nx5d, '
                      'migrating any existing spice folder to the new run-number anchors.')
     parser.add_argument('proposal_root', type=Path, nargs='?', default=None,

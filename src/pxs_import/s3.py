@@ -1,6 +1,6 @@
 '''S3 target support for the UDKM importer: credentials, objects, manifest.
 
-Everything `udkm-prepare --s3` needs to talk to an S3 bucket lives here, so
+Everything `pxs-prepare --s3` needs to talk to an S3 bucket lives here, so
 that :mod:`pxs_import.prepare` keeps its orchestration role and stays
 readable.
 

@@ -74,7 +74,7 @@ rename". Do not touch them.
 | Name | Where | Why |
 |---|---|---|
 | `MANIFEST_NAME = '.udkm-import.json'` | [s3.py:208](src/pxs_import/s3.py#L208) | Live buckets already hold this file. Renaming it makes every imported proposal look un-imported and silently re-uploads it. Pinned by a test in `tests/s3_test.py`. |
-| `BASE_ENV_VAR = 'UDKM_BASE'` | [sources.py:65](src/pxs_import/sources.py#L65) | Already set in users' shells. `BASE_ENV_VARS` reads `UDKM_BASE` then `PXS_BASE`, so the alias works and the old name wins when both are set. |
+| `BASE_ENV_VAR = 'UDKM_BASE'` | [sources.py:69](src/pxs_import/sources.py#L69) | Already set in users' shells. `BASE_ENV_VARS` reads `UDKM_BASE` then `PXS_BASE`, so the alias works and the old name wins when both are set. |
 | `udkm_source` | the scan-key dict in `reader.py` | nx5d sees it; it names the `YYYYMMDD/HHMMSS` a scan came from. |
 
 ## Architecture
@@ -186,7 +186,7 @@ attribute assertion in [tests/build_test.py](tests/build_test.py).
 ## The test corpus
 
 `tests/corpus/` is **committed real data**, about 40 MB over 10 500 files,
-and `tests/corpus_test.py`'s 26 assertions are measured off it: parameter
+and `tests/corpus_test.py`'s 26 tests are measured off it: parameter
 vocabularies, frame-plan counts, date-range totals, the cryostat log's own
 stamps, and one whole-proposal import through `pm`.
 
@@ -204,9 +204,12 @@ name, or absent. Every row is justified by a named test. Rules of engagement:
   about intensity.
 - The tables *are* real, including `20151226/000051`'s 1.4 MB and PtAu's
   25 MB, because row counts are what the importer is tested on.
-- Regenerating needs the raw proposals, which live only on the author's
-  machine (and are deleted since the extraction). The tool stays as the
-  record of how the corpus was made.
+- Regenerating needs the raw proposals. They are on the group server, and
+  may or may not still be on the machine the extraction ran on -- the
+  22 GB under that checkout's `notebooks/` was slated for deletion once the
+  corpus carried the tests. So regeneration is a fetch away, not
+  impossible: widen a rule and re-run the tool, never hand-edit
+  `tests/corpus/`.
 
 ## Conventions
 
@@ -259,5 +262,9 @@ The two spice tests read `spice.pre-migration/`, not `spice/` —
 `pxs-prepare` migrates `spice/` in place and `_ensure_backup` never
 overwrites the backup, so once a proposal has been imported the live folder
 no longer has the date/time anchors those tests migrate from.
+
+Known defects, deferred findings and the follow-ups this package inherited
+from its time inside xraydc are in [ISSUES.md](ISSUES.md). Read it before
+concluding something is a new bug.
 
 Docs are mkdocs + mkdocstrings (`doc/pages/`).

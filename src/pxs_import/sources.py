@@ -199,7 +199,7 @@ def resolve_sources(proposal_root: Path, *, explicit: list[Path] | None = None,
        This is the long-standing behaviour, and the common case where the
        data has already been hand-copied into one folder. The predicate has
        to accept *both* shapes: test only for "holds days" and a one-day
-       import like ``udkm-prepare notebooks/20250408`` falls through to route
+       import like ``pxs-prepare D:/proposals/20250408`` falls through to route
        3 and becomes a whole-archive one.
     3. The program folders under the base path.
 
