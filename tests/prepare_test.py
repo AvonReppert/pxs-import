@@ -35,6 +35,23 @@ def _proposal(root):
     return root
 
 
+def _fake_local_pm(root, calls=None):
+    '''Runner stub for the default (per-scan-file) local path: writes a stub
+    ``.h5``, named after its own scan key so a test can tell whether a given
+    scan was (re)written, for every scan this command would actually import
+    -- the ``only=`` list if given, otherwise every scan in ``resolved_file``.
+    '''
+    def run(cmd, **kwargs):
+        if calls is not None:
+            calls.append(cmd)
+        only = next((a[len('only='):].split(',') for a in cmd if a.startswith('only=')), None)
+        keys = only if only is not None else [key for key, _, _ in _resolved_of(cmd)]
+        (root/'scans').mkdir(parents=True, exist_ok=True)
+        for key in keys:
+            (root/'scans'/f'{key}.h5').write_bytes(f'stub:{key}'.encode())
+    return run
+
+
 def test_target_urls(tmp_path):
     root = tmp_path/'202601_PtAu'
     assert target_url_for(root, single_file=False).endswith('/202601_PtAu/scans/{scan}.h5')
@@ -86,6 +103,59 @@ def test_dry_run_force_never_removes_existing_output(tmp_path):
                             runner=lambda cmd, **kw: None)
     assert (root/'scans'/'r0001.h5').read_bytes() == b'previous import'
     assert '-d' in res.command[0]
+
+
+def test_new_scan_at_the_end_is_imported_without_touching_old_files(tmp_path):
+    '''A scan added after the last import must not cost reimporting what is
+    already there -- the whole point of the feature.'''
+    root = _proposal(tmp_path/'P')
+    prepare_proposal(root, runner=_fake_local_pm(root))
+    (root/'scans'/'r0001.h5').write_bytes(b'ORIGINAL r0001')
+    (root/'scans'/'r0002.h5').write_bytes(b'ORIGINAL r0002')
+
+    write_trss(root/'20260210'/'090000', n_rows=2)     # lands after both existing scans
+    calls = []
+    res = prepare_proposal(root, runner=_fake_local_pm(root, calls))
+
+    assert res.imported == ['r0003'] and res.skipped == ['r0001', 'r0002']
+    assert any(arg == 'only=r0003' for arg in calls[0])
+    assert (root/'scans'/'r0001.h5').read_bytes() == b'ORIGINAL r0001'
+    assert (root/'scans'/'r0002.h5').read_bytes() == b'ORIGINAL r0002'
+    assert (root/'scans'/'r0003.h5').read_bytes() == b'stub:r0003'
+
+
+def test_no_new_scans_is_a_noop_without_force(tmp_path):
+    root = _proposal(tmp_path/'P')
+    prepare_proposal(root, runner=_fake_local_pm(root))
+    res = prepare_proposal(root, runner=lambda cmd, **kw: pytest.fail('pm should not run'))
+    assert res.imported == [] and res.skipped == ['r0001', 'r0002'] and res.command == []
+
+
+def test_scan_missing_its_file_is_retried_even_though_recorded(tmp_path):
+    '''A scan the mapping table already knows but whose .h5 never landed on
+    disk -- e.g. a prior run's parse failure, now logged and skipped rather
+    than aborting the whole import -- is retried under its existing number.'''
+    root = _proposal(tmp_path/'P')
+    prepare_proposal(root, runner=_fake_local_pm(root))
+    (root/'scans'/'r0001.h5').unlink()
+
+    calls = []
+    res = prepare_proposal(root, runner=_fake_local_pm(root, calls))
+
+    assert res.imported == ['r0001'] and res.skipped == ['r0002']
+    assert any(arg == 'only=r0001' for arg in calls[0])
+    assert (root/'scans'/'r0001.h5').exists()
+
+
+def test_single_file_mode_still_refuses_without_force(tmp_path):
+    '''No dependency-free way to see which #{scan} groups a shared .h5
+    already holds, so --single-file keeps the old all-or-nothing guard.'''
+    root = _proposal(tmp_path/'P')
+    prepare_proposal(root, single_file=True,
+                      runner=lambda cmd, **kw: (root/f'{root.name}.h5').write_bytes(b''))
+    with pytest.raises(FileExistsError):
+        prepare_proposal(root, single_file=True,
+                          runner=lambda cmd, **kw: pytest.fail('pm should not run'))
 
 
 def test_target_url_for_relative_path_resolves_against_cwd():

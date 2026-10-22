@@ -47,8 +47,11 @@ class PrepareResult:
         command: Every ``pm`` command line that was run, in order. Local
             imports run one; S3 imports run one per scan, so that a crash
             is attributable to a single scan (see :func:`prepare_proposal`).
-        skipped: Scan keys the S3 manifest already recorded as complete, so
-            they were not re-imported. Always empty for a local import.
+        skipped: Scan keys already recorded as complete and left untouched.
+            Under ``--s3``, scans the manifest already recorded; for a local,
+            per-scan-file import with a previous ``scan-mapping.csv`` and no
+            renumbering, scans whose ``.h5`` is already on disk. Empty for a
+            fresh import, a ``--single-file`` import, or a ``--force`` run.
         imported: Scan keys actually imported by this run.
         spice_changes: Anchor rewrites applied to the proposal's spice
             folder (empty if there was none, or migration found nothing to
@@ -346,12 +349,14 @@ def prepare_proposal(proposal_root: Path, *, single_file: bool = False,
                       end: str | None = None) -> PrepareResult:
     '''Discover, number, import and (if present) migrate a UDKM proposal.
 
-    Order of operations: discover and number the proposal's scans; refuse
-    (or, with ``force`` and outside a dry run, clear) any pre-existing
-    import output; write the mapping table and print it; build and run the
-    ``pm scan import`` command; if the proposal has a spice folder, fix its
-    recipes and migrate its anchors to the new run-number scheme; print the
-    resulting ``Proposal(...)`` line nx5d can load.
+    Order of operations: discover and number the proposal's scans; refuse (or,
+    with ``force`` and outside a dry run, clear) any pre-existing import
+    output it cannot import around -- for a recognised previous per-scan-file
+    import, import only the scans that are new or still missing instead;
+    write the mapping table and print it; build and run the ``pm scan
+    import`` command; if the proposal has a spice folder, fix its recipes and
+    migrate its anchors to the new run-number scheme; print the resulting
+    ``Proposal(...)`` line nx5d can load.
 
     Args:
         proposal_root: Proposal root directory, as accepted by
@@ -362,8 +367,14 @@ def prepare_proposal(proposal_root: Path, *, single_file: bool = False,
         single_file: If true, import every scan into one ``.h5`` file with
             ``#{scan}`` groups; otherwise one ``.h5`` file per scan.
         force: If true, remove any pre-existing import output before
-            writing (skipped during a dry run -- see ``dry_run``);
-            otherwise refuse by raising ``FileExistsError``.
+            writing (skipped during a dry run -- see ``dry_run``) and
+            reimport every scan. If false: for the default per-scan-file
+            output, when a previous ``scan-mapping.csv`` exists and no scan
+            would be renumbered, only scans new since that import (or whose
+            ``.h5`` never made it to disk) are imported, and every other
+            scan's file is left untouched -- nothing is refused. Otherwise
+            (``single_file``, or no recognisable previous import) any
+            pre-existing output is refused by raising ``FileExistsError``.
         dry_run: If true, ``pm`` is invoked with ``-d`` (so it writes
             nothing) and :func:`~pxs_import.spice.fix_recipes`/
             :func:`~pxs_import.spice.migrate_spice` are called with
@@ -403,9 +414,11 @@ def prepare_proposal(proposal_root: Path, *, single_file: bool = False,
         The :class:`PrepareResult` describing what was done.
 
     Raises:
-        FileExistsError: There is already import output at the target and
-            ``force`` is false; or, under ``s3_bucket``, the remote spice
-            prefix is non-empty and ``force_spice`` is false.
+        FileExistsError: ``force`` is false and either there is import output
+            this run cannot recognise as its own previous import (no matching
+            ``scan-mapping.csv``), or ``single_file`` is true and there is
+            any pre-existing output at all; or, under ``s3_bucket``, the
+            remote spice prefix is non-empty and ``force_spice`` is false.
         RuntimeError: The ``base`` route was used with no ``start``; or no
             scans were found; or scans would be renumbered since the last
             import and ``force`` is false; or ``s3_bucket`` was given, no
@@ -478,7 +491,8 @@ def prepare_proposal(proposal_root: Path, *, single_file: bool = False,
     # scrolls past among the mapping table -- so the one case the check exists
     # for would be the one case it never fires in.
     mapping_path = out / 'scan-mapping.csv'
-    moved = renumbered(read_mapping_table(mapping_path), mapping)
+    previous = read_mapping_table(mapping_path)
+    moved = renumbered(previous, mapping)
     if moved:
         shown = '; '.join(f'{src}: {old} -> {new}' for src, old, new in moved[:5])
         more = f' (and {len(moved) - 5} more)' if len(moved) > 5 else ''
@@ -490,19 +504,39 @@ def prepare_proposal(proposal_root: Path, *, single_file: bool = False,
         logger.warning('%d scan(s) change number since the last import: %s%s',
                         len(moved), shown, more)
 
+    only_keys: list[str] | None = None
     if s3_bucket is None:
         existing = existing_output(proposal_root, single_file=single_file, output_root=out)
         if existing is not None:
-            if not force:
-                raise FileExistsError(existing)
-            if dry_run:
-                logger.warning('dry run: would remove existing import output: %s', existing)
-            else:
-                logger.warning('removing existing import output: %s', existing)
-                if existing.is_dir():
-                    shutil.rmtree(existing)
+            if force:
+                if dry_run:
+                    logger.warning('dry run: would remove existing import output: %s', existing)
                 else:
-                    existing.unlink()
+                    logger.warning('removing existing import output: %s', existing)
+                    if existing.is_dir():
+                        shutil.rmtree(existing)
+                    else:
+                        existing.unlink()
+            elif single_file or not previous:
+                # Single-file output can't be checked for which #{scan} groups
+                # it already holds without an nx5d/h5py dependency this package
+                # deliberately does not take on (see CLAUDE.md); and output with
+                # no scan-mapping.csv behind it is not recognisable as our own
+                # previous import, so it is refused rather than assumed safe.
+                raise FileExistsError(existing)
+            else:
+                # `moved` is empty here (or `force` would have been required
+                # above), so a source absent from `previous` is new, and
+                # necessarily chronologically after everything already
+                # imported -- a mid-proposal insertion would have shown up in
+                # `moved` instead. A source that *is* in `previous` but whose
+                # file never landed on disk (e.g. a prior run's parse failure,
+                # logged as a warning and skipped rather than aborting -- see
+                # scans_from_pxs) is retried too, under its already-assigned
+                # number.
+                only_keys = [scan for scan, folder in mapping
+                             if folder.source not in previous
+                             or not (out / 'scans' / f'{scan}.h5').is_file()]
 
     # Both, and separately: with sources elsewhere the workspace holds no raw
     # data and so usually does not exist yet, and `out` is a different
@@ -544,15 +578,26 @@ def prepare_proposal(proposal_root: Path, *, single_file: bool = False,
             fs=fs, pm=pm, runner=runner, mapping=mapping, proposal_root=proposal_root,
             target_url=target_url, bucket=s3_bucket, photon_energy=photon_energy,
             force=force, dry_run=dry_run, s3_profile=s3_profile)
+    elif only_keys is not None and not only_keys:
+        print('no new scans since the last import; nothing to do')
+        command, skipped, imported = [], [key for key, _ in mapping], []
     else:
         single = [*pm, *(['-d'] if dry_run else []), '-P', '-u', target_url,
                   'scan', 'import', str(proposal_root),
                   '-R', 'pxs_import.reader:scans_from_pxs',
                   f'photon_energy={photon_energy}', f'resolved_file={resolved_path}',
+                  *([f'only={",".join(only_keys)}'] if only_keys is not None else []),
                   '-W', *(['hdf5'] if single_file else []), 'frame_guard=None']
         logger.info('running: %s', ' '.join(single))
         runner(single, check=True)
-        command, skipped, imported = [single], [], [key for key, _ in mapping]
+        if only_keys is not None:
+            imported = only_keys
+            skipped = [key for key, _ in mapping if key not in only_keys]
+            print(f'imported {len(imported)} new scan(s); left {len(skipped)} scan(s) untouched')
+        else:
+            imported = [key for key, _ in mapping]
+            skipped = []
+        command = [single]
 
     spice_changes: list[SpiceChange] = []
     if spice_dir.is_dir():
