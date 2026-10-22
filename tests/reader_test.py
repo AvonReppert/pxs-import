@@ -1,5 +1,6 @@
 import csv
 import json
+import logging
 import pytest
 from pxs_import.reader import scans_from_pxs, format_mapping_table
 from fixtures import write_srsm, write_trss, write_xrss, write_alignment
@@ -32,11 +33,16 @@ def test_mapping_table_printed_to_stderr(tmp_path, capsys):       # F4
     captured = capsys.readouterr()
     assert 'r0001 <- 20260202/135936 (xRSS)' in captured.err
 
-def test_bad_scan_raises_runtime_error_naming_scan(tmp_path):      # F5 (covers T4's zero-frame xRSS too)
+def test_bad_scan_is_skipped_with_warning(tmp_path, caplog):      # F5 (covers T4's zero-frame xRSS too)
+    '''One bad folder must not cost the rest of the proposal: it is logged
+    and skipped, not raised.'''
     write_xrss(tmp_path/'20260202'/'135936', n_rows=3, n_tifs=0)
-    with pytest.raises(RuntimeError, match='r0001') as exc_info:
-        list(scans_from_pxs(str(tmp_path)))
-    assert '135936' in str(exc_info.value)
+    write_xrss(tmp_path/'20260203'/'120401', n_rows=2)
+    with caplog.at_level(logging.WARNING):
+        out = list(scans_from_pxs(str(tmp_path)))
+    assert [k['scan'] for k, _ in out] == ['r0002']
+    assert [k['udkm_source'] for k, _ in out] == ['20260203/120401']
+    assert 'r0001' in caplog.text and '135936' in caplog.text
 
 def test_format_mapping_table_line():
     from pathlib import Path
@@ -108,6 +114,10 @@ def test_reader_accepts_an_already_decoded_resolved_value(tmp_path):
 
 
 def test_reader_rejects_a_resolved_entry_whose_folder_is_gone(tmp_path):
+    '''Distinct from a per-scan build failure: a vanished resolved folder means
+    the orchestrator's own moments-ago listing is already stale -- a dropped
+    share, not one scan's bad data -- so this still fails fast, in
+    `_mapping_from_resolved`, before the per-scan loop that degrades.'''
     resolved = json.dumps([['r0001', str(tmp_path/'missing'), 'alignment']])
     with pytest.raises(RuntimeError, match='missing'):
         list(scans_from_pxs(tmp_path, resolved=resolved))

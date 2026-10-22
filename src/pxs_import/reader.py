@@ -515,15 +515,17 @@ def scans_from_pxs(source: str | Path, *, photon_energy: float = 8048.0,
         ``{'scan': scan_name, 'iscan': 1-based index, 'udkm_source':
         scan.source, 'scan_type': scan.scan_type}`` and ``h5like`` is the
         scan's assembled ``silx.io.commonh5.File``. No reference to a
-        yielded ``h5like`` is retained after it is yielded.
+        yielded ``h5like`` is retained after it is yielded. A scan whose
+        parsing/planning/building raises is **not** yielded at all: the
+        exception is logged as a warning naming the scan's number, source
+        and type, and the loop moves on to the next scan. One bad folder
+        -- an empty ``.dat``, a vanished source, a missing TIFF stack --
+        must not cost the rest of the proposal.
 
     Raises:
         ValueError: ``only`` names a scan key this proposal does not have;
             the message lists the unknown keys and every valid one. Raised
             before any scan is parsed.
-        RuntimeError: Any exception while parsing/planning/building one
-            scan, wrapped with that scan's number, source and type, with
-            the original exception chained as ``__cause__``.
     '''
     if resolved_file is not None:
         mapping = _mapping_from_resolved(Path(resolved_file).read_text(encoding='utf-8'))
@@ -560,7 +562,9 @@ def scans_from_pxs(source: str | Path, *, photon_energy: float = 8048.0,
             h5like = build_scan_h5like(folder, table, params, plan, stack, missing,
                                         photon_energy=photon_energy)
         except Exception as e:
-            raise RuntimeError(f'{scan_name} ({folder.source}, {folder.scan_type}): {e}') from e
+            logger.warning('%s (%s, %s): %s -- skipping scan',
+                            scan_name, folder.source, folder.scan_type, e)
+            continue
         key = {'scan': scan_name, 'iscan': iscan, 'udkm_source': folder.source,
                'scan_type': folder.scan_type}
         yield key, h5like
