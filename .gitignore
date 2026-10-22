@@ -1,0 +1,65 @@
+*~
+\#*
+.\#*
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Build / Distribution
+build/
+dist/
+*.egg-info/
+.eggs/
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Testing / Coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Type checking / lint
+.mypy_cache/
+.ruff_cache/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Environment variables
+.env
+.env.*
+
+# VS Code
+.vscode/
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# Logs
+*.log
+
+# Other
+*.orig
+
+# Written by setuptools_scm at build time.
+_version.py
+
+# Subagent-driven-development scratch workspace (ledger, briefs, review packages)
+.superpowers/
+
+# Per-user Claude Code permissions; not shared with the repo
+.claude/settings.local.json
+
+# Built documentation site
+doc/site/

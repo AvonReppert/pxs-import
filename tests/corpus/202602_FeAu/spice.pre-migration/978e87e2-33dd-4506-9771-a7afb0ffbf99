@@ -1,0 +1,1 @@
+{"version": "kmc3/1a", "type": "recipes", "handle": "recipes", "uuid": "978e87e2-33dd-4506-9771-a7afb0ffbf99", "revision": 1, "anchor": "", "data": {"tRSM": "pymod:///xraydc.cooking#TRSM", "sRSM": "pymod:///xraydc.cooking#sRSM", "xRSS": "pymod:///xraydc.cooking#TRSS_2d_fix", "tRSS": "pymod:///xraydc.cooking#TRSS_2d_fix", "rocking": "pymod:///xraydc.cooking#sRSM"}}

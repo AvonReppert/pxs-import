@@ -1,0 +1,26 @@
+M260210-FeAuSL4
+SL+1 Peak
+960x860µm²
+167mW
+11.5mJ/cm²
+
+Date Time: 12.02.2026 17:45:20
+
+Delay Vector: -5:1:100, 110:10:200, 300:100:1000, 1500:500:7500
+
+Delay Loop: 80
+Delay Order: Triangle
+Theta Vector: 23.65
+Theta Loop: 1
+Theta Order: Triangle
+2 Theta Correction: 0.000000
+Inner Parameter: Theta
+Exposure Time: 4.000000s
+Calibration: 0.000000	0.000000	14532900.000000	-306090.000000
+
+
+File Name: 174520
+Tmp Path: P:\PilatusTheta2Theta\2026\20260212\174520
+Data Path: C:\Users\Labor\Documents\Measurements\PilatusTheta2Theta\2026\20260212\174520
+
+ROI: (0, 0); (487, 195)

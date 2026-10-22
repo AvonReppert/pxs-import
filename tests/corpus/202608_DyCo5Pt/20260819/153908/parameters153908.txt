@@ -1,0 +1,22 @@
+
+
+Date Time: 19.08.2026 15:39:08
+
+Delay Vector: -10:1:50,60:10:500
+
+Delay Loop: 80
+Delay Order: Triangle
+Theta Vector: 20.05
+Theta Loop: 1
+Theta Order: Triangle
+2 Theta Correction: 0.000000
+Inner Parameter: Theta
+Exposure Time: 1.000000s
+Calibration: 0.000000	0.000000	10980000.000000	-249500.000000
+
+
+File Name: 153908
+Tmp Path: P:\PilatusTheta2Theta\2026\20260819\153908
+Data Path: C:\Users\Labor\Documents\Measurements\PilatusTheta2Theta\2026\20260819\153908
+
+ROI: (0, 0); (487, 195)

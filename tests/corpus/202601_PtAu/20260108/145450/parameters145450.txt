@@ -1,0 +1,26 @@
+20nm Au on MgO
+157mW
+930x900µm²
+10mJ/cm²
+
+ 
+
+Date Time: 08.01.2026 14:54:50
+
+Delay Vector: -10:0.5:40, 41:1:200
+Delay Loop: 80
+Delay Order: Triangle
+Theta Vector: 18.4
+Theta Loop: 1
+Theta Order: Triangle
+2 Theta Correction: 0.000000
+Inner Parameter: Theta
+Exposure Time: 2.000000s
+Calibration: 0.000000	0.000000	14532900.000000	-306090.000000
+
+
+File Name: 145450
+Tmp Path: P:\PilatusTheta2Theta\2026\20260108\145450
+Data Path: C:\Users\Labor\Documents\Measurements\PilatusTheta2Theta\2026\20260108\145450
+
+ROI: (0, 0); (487, 195)

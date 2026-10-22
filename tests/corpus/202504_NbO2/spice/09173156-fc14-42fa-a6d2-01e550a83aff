@@ -1,0 +1,14 @@
+{
+  "version": "kmc3/1a",
+  "type": "qargs",
+  "handle": "qargs",
+  "uuid": "09173156-fc14-42fa-a6d2-01e550a83aff",
+  "revision": 10,
+  "anchor": "r0059",
+  "data": {
+    "groupby": "delay",
+    "dims": null,
+    "qsize": null,
+    "gridargs": null
+  }
+}

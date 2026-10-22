@@ -1,0 +1,19 @@
+Das ist ein Kommentar
+23.1 and 44.7deg
+
+Date Time: 24.04.2025 14:14:30
+
+Stage: Horizontal
+Unit: steps
+
+Start Position: 60500.000000
+End Position: 61900.000000
+Step Width: 100.000000
+Exposure Time: 1.000000s
+
+File Name: 141430
+Tmp Path: P:\PilatusScanZaber\20250424\141430
+Data Path: C:\Users\Labor\Documents\Measurements\PilatusScanZaber\20250424\141430
+
+ROI: (266, 58); (284, 90)
+NbofLoops: 10

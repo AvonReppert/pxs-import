@@ -1,0 +1,26 @@
+JB_1396
+NbO2 (100)
+9.3 mJ/cm², 725x925µm²
+140mW
+
+
+
+Date Time: 09.04.2025 14:24:02
+
+Delay Vector: -5:1:35, 40, 50, 60, 70, 80, 90, 100,140, 500, 1000, 2000, 4000
+Delay Loop: 50
+Delay Order: Triangle
+Theta Vector: 12.5
+Theta Loop: 1
+Theta Order: Triangle
+2 Theta Correction: 0.000000
+Inner Parameter: Theta
+Exposure Time: 2.000000s
+Calibration: 0.000000	0.000000	6828690.000000	-143103.000000
+
+
+File Name: 142402
+Tmp Path: P:\PilatusTheta2Theta\20250409\142402
+Data Path: C:\Users\Labor\Documents\Measurements\PilatusTheta2Theta\20250409\142402
+
+ROI: (0, 0); (487, 195)

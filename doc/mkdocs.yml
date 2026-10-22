@@ -1,0 +1,50 @@
+# MkDocs configuration for the pxs-import documentation.
+#
+# Build with:  mkdocs build -f doc/mkdocs.yml
+# Serve with:  mkdocs serve -f doc/mkdocs.yml
+#
+# Requires the "doc" optional dependencies:
+#   pip install pxs-import[doc]
+
+site_name: pxs-import
+site_url: https://pxs-import.readthedocs.io/
+
+# Documentation source pages live in doc/pages/
+docs_dir: pages
+
+nav:
+  - Home: index.md
+  - API Reference: api.md
+  - How-to - import a PXS proposal: howto.md
+
+theme:
+  name: readthedocs
+
+plugins:
+  # Auto-generate API docs from Python docstrings (src/ layout)
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [../src]
+          options:
+            show_source: true
+            show_root_heading: true
+            members_order: source
+
+# Deliberately NOT enabled, unlike in xraydc: mkdocs-jupyter. There are no
+# notebooks in this repository, and its `should_include` hook runs
+# `jupytext.read` over every Markdown page looking for a kernelspec. That
+# parse degrades sharply with page length: `pages/api.md` stops returning at
+# all somewhere past its 90th line (xraydc's shorter one gets away with it),
+# so the build hangs with no error at all. Add the plugin back together with
+# the first notebook, and check the long pages first.
+
+markdown_extensions:
+  # Syntax highlighting in fenced code blocks
+  - pymdownx.highlight:
+      anchor_linenums: true
+      pygments_lang_class: true
+  # Inline code highlighting with shebang-style language markers
+  - pymdownx.inlinehilite
+  # Fenced code blocks, admonitions, and custom blocks
+  - pymdownx.superfences

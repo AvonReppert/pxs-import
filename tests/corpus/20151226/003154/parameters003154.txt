@@ -1,0 +1,19 @@
+Ho
+Static 55W, 55kV
+
+Date Time: 26.12.2015 00:31:54
+
+Start Position: 13.500000°
+End Position: 21.000000°
+2 Theta Correction: 0.400000
+Step Width: 0.025253°
+Number of Loops: 1
+Exposure Time: 2.000000s
+
+File Name: 003154
+Tmp Path: P:\PilatusTheta2Theta\20151226\003154
+Data Path: C:\Users\Labor\Documents\Measurements\PilatusTheta2Theta\20151226\003154
+
+ROI: (4, 32); (485, 193)
+
+Calib: -1966520.000000	898564.000000	7187570.000000	-129086.000000

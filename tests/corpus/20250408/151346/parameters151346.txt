@@ -1,0 +1,18 @@
+Das ist ein Kommentar
+
+Date Time: 08.04.2025 15:13:46
+
+Stage: Z Linear
+Unit: mm
+
+Start Position: -10.000000
+End Position: 0.000000
+Step Width: 0.100000
+Exposure Time: 0.100000s
+
+File Name: 151346
+Tmp Path: P:\PilatusScanGoniometer\20250408\151346
+Data Path: C:\Users\Labor\Documents\Measurements\PilatusScanGoniometer\20250408\151346
+
+ROI: (209, 60); (285, 125)
+NbofLoops: 5

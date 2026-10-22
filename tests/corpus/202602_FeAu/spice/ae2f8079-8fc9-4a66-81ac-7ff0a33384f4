@@ -1,0 +1,49 @@
+{
+  "version": "kmc3/1a",
+  "handle": "exp_info",
+  "uuid": "ae2f8079-8fc9-4a66-81ac-7ff0a33384f4",
+  "revision": 3,
+  "anchor": "r0010",
+  "data": {
+    "goniometerAxes": {
+      "theta": "y-"
+    },
+    "detectorAxes": {
+      "ttheta": "y-"
+    },
+    "detectorTARAlign": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "imageAxes": [
+      "y-",
+      "z+"
+    ],
+    "imageSize": [
+      195,
+      487
+    ],
+    "imageCenter": [
+      97,
+      241
+    ],
+    "imageDistance": 300,
+    "imageChannelSize": [
+      0.172,
+      0.172
+    ],
+    "sampleFaceUp": "z+",
+    "beamDirection": [
+      1,
+      0,
+      0
+    ],
+    "sampleNormal": [
+      0,
+      0,
+      1
+    ],
+    "beamEnergy": 8048.0
+  }
+}

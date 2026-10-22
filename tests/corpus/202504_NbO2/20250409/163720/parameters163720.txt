@@ -1,0 +1,26 @@
+NJ28
+NbO2 (unknown)
+9.3 mJ/cm², 725x925µm²
+121mW
+
+
+
+Date Time: 09.04.2025 16:37:20
+
+Delay Vector: -5:1:60, 70, 80, 90, 100,140, 500, 1000, 2000, 4000
+Delay Loop: 50
+Delay Order: Triangle
+Theta Vector: 18.75
+Theta Loop: 1
+Theta Order: Triangle
+2 Theta Correction: 0.000000
+Inner Parameter: Theta
+Exposure Time: 2.000000s
+Calibration: 0.000000	0.000000	6828690.000000	-143103.000000
+
+
+File Name: 163720
+Tmp Path: P:\PilatusTheta2Theta\20250409\163720
+Data Path: C:\Users\Labor\Documents\Measurements\PilatusTheta2Theta\20250409\163720
+
+ROI: (0, 0); (487, 195)

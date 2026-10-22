@@ -1,0 +1,18 @@
+Das ist ein Kommentar
+
+Date Time: 08.04.2025 16:02:47
+
+Stage: Omega
+Unit: deg
+
+Start Position: 22.000000
+End Position: 23.300000
+Step Width: 0.050000
+Exposure Time: 0.500000s
+
+File Name: 160247
+Tmp Path: P:\PilatusScanGoniometer\20250408\160247
+Data Path: C:\Users\Labor\Documents\Measurements\PilatusScanGoniometer\20250408\160247
+
+ROI: (209, 60); (285, 125)
+NbofLoops: 5

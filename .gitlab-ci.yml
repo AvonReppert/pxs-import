@@ -1,0 +1,102 @@
+default:
+  image:
+    # Pinned on purpose: `python:latest` tracks the newest CPython release,
+    # and the scientific stack (silx, h5py, numpy) only publishes binary
+    # wheels a few minor versions behind. On an unpinned image pip falls
+    # back to building from sdist, which pulls h5py as a build dependency
+    # and fails for want of libhdf5 headers. Bump this only once the stack
+    # ships wheels for the newer interpreter.
+    name: python:3.13
+
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  PYPI_RELEASE_URL: https://test.pypi.org/legacy/
+
+cache:
+  # Keyed on the interpreter so that bumping the image above cannot restore a
+  # venv/ built against a different Python.
+  key: "venv-py313"
+  paths:
+    - .cache/pip
+    - venv/
+
+stages:
+  - test
+  - build
+  - release
+
+testing:
+  stage: test
+  # Runs the default selection, which includes the committed corpus but not
+  # the `slow` whole-proposal imports: those need nx5d and xraydc, neither of
+  # which is installable from PyPI. They are run on a developer machine.
+  script:
+    - python --version
+    - pip install virtualenv
+    - virtualenv venv
+    - source venv/bin/activate
+    - pip install -e ".[test]"
+    - coverage run --source=pxs_import -m pytest
+    - coverage report
+    - coverage xml
+  coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
+
+packaging:
+  stage: build
+  script:
+    - python --version
+    - pip install virtualenv
+    - virtualenv venv
+    - source venv/bin/activate
+    - export PACK_VERSION=`echo $CI_COMMIT_TAG | sed -n /v[0-9].*/p | cut -b 2-`
+    - echo "Packaging Version $PACK_VERSION"
+    - pip install --upgrade build
+    - python3 -m build
+    - pip install --upgrade twine
+    - twine check dist/*
+    - pip install dist/*.whl
+  artifacts:
+    paths:
+      - dist/*
+
+analysis:
+  stage: test
+  allow_failure: true
+  script:
+    - python --version
+    - pip install virtualenv
+    - virtualenv venv
+    - source venv/bin/activate
+    - pip install --upgrade pylint-gitlab
+    - pip install --upgrade anybadge
+    - mkdir -p public/badges public/lint
+    - echo undefined > public/badges/"$CI_JOB_NAME".score
+    - pylint --exit-zero --output-format=text $(find -type f -name "*.py" ! -path "**/venv/**") | tee /tmp/pylint.txt
+    - sed -n 's/^Your code has been rated at \([-0-9.]*\)\/.*/\1/p' /tmp/pylint.txt > public/badges/"$CI_JOB_NAME".score
+    - pylint --exit-zero --output-format=pylint_gitlab.GitlabCodeClimateReporter $(find -type f -name "*.py" ! -path "**/venv/**") > codeclimate.json
+    - pylint --exit-zero --output-format=pylint_gitlab.GitlabPagesHtmlReporter $(find -type f -name "*.py" ! -path "**/venv/**") > public/lint/index.html
+  after_script:
+    - anybadge --overwrite --label "$CI_JOB_NAME" --value=$(cat public/badges/$CI_JOB_NAME.score) --file=public/badges/$CI_JOB_NAME.svg 4=red 6=orange 8=yellow 10=green
+  artifacts:
+    paths:
+      - public
+    reports:
+      codequality: codeclimate.json
+    when: always
+
+gitlab release:
+  stage: release
+  image: registry.gitlab.com/gitlab-org/release-cli:latest
+  rules:
+    - if: $CI_COMMIT_TAG =~ "/^v[0-9].*/"
+  script:
+    - echo "Releasing:"
+    - ls dist/*
+  release:
+    tag_name: $CI_COMMIT_TAG
+    description: $CI_COMMIT_TAG

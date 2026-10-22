@@ -1,0 +1,11 @@
+{
+  "version": "kmc3/1a",
+  "handle": "offsets",
+  "uuid": "41206c14-36d2-408c-ac51-e04dd581114e",
+  "revision": 9,
+  "anchor": "r0035",
+  "data": {
+    "theta": -0.25,
+    "ttheta": 0.0
+  }
+}

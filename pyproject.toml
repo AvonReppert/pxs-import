@@ -1,0 +1,100 @@
+[build-system]
+requires = ["setuptools>=64.0", "setuptools_scm[toml]>=6.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pxs-import"
+authors = [
+    { name = "Alexander von Reppert" },
+    { name = "Matthias Rössle", email = "matthias.roessle@helmholtz-berlin.de" },
+    { name = "Florin Boariu", email = "florin.pt@rootshell.ro" },
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+    "Operating System :: OS Independent",
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering"
+]
+dependencies = [
+    "numpy",
+    # The frame loader reads the detector's TIFF stacks.
+    "tifffile",
+    # silx.io.commonh5 is what the nx5d reader hands back: an in-memory
+    # h5py-like tree that nx5d's `pm scan import` writes out.
+    "silx",
+]
+dynamic = ["version"]
+description = "Import PXS lab-source (UDKM) scan folders into nx5d repo format"
+readme = "README.md"
+requires-python = ">=3.10"
+keywords = ["x-ray", "diffraction", "nx5d", "udkm", "pxs"]
+
+[project.urls]
+"Source Code" = "https://gitlab.com/kmc3-xpp/pxs-import/"
+"Bug Tracker" = "https://gitlab.com/kmc3-xpp/pxs-import/"
+
+[project.optional-dependencies]
+# Only reached through pxs_import.s3, and only for `pxs-prepare --s3`;
+# imported inside functions so `import pxs_import` stays free of it.
+s3 = [
+    "s3fs",
+]
+
+# The suite imports pxs_import.s3's tests at collection time, so s3fs has to
+# be reachable from here as well as from [s3].
+#
+# Not listed, on purpose: the end-to-end tests additionally want `nx5d` (for
+# the `pm scan import` subprocess) and `xraydc` (which nx5d resolves the
+# cooking recipes from). Neither is on PyPI, so neither can be declared here;
+# both tests skip themselves when their package is missing.
+test = [
+    "pytest",
+    "pytest-cov",
+    "s3fs",
+]
+
+# No mkdocs-jupyter: there are no notebooks here, and its Markdown probe
+# hangs the build (see the comment in doc/mkdocs.yml).
+doc = [
+    "mkdocs",
+    "mkdocstrings[python]",
+]
+
+all = [
+    "pytest",
+    "pytest-cov",
+    "mkdocs",
+    "mkdocstrings[python]",
+    "s3fs",
+]
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+# The corpus under tests/corpus/ ships with the repository, so corpus tests
+# run by default. The whole-proposal imports do not: they drive nx5d's `pm`
+# over thousands of frames and take minutes.
+addopts = "-ra -m 'not slow'"
+log_cli = true
+testpaths = [
+    "tests",
+]
+markers = [
+    "corpus: runs against the committed corpus under tests/corpus/",
+    "nx5d: needs an installed nx5d",
+    "slow: whole-proposal imports through pm (minutes, GB of tmp)",
+]
+
+[tool.setuptools_scm]
+write_to = "src/pxs_import/_version.py"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[project.scripts]
+pxs-prepare = "pxs_import.prepare:main"

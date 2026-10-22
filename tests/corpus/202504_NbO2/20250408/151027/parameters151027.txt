@@ -1,0 +1,18 @@
+Das ist ein Kommentar
+
+Date Time: 08.04.2025 15:10:27
+
+Stage: X Linear
+Unit: mm
+
+Start Position: -1.000000
+End Position: 1.000000
+Step Width: 0.100000
+Exposure Time: 1.000000s
+
+File Name: 151027
+Tmp Path: P:\PilatusScanGoniometer\20250408\151027
+Data Path: C:\Users\Labor\Documents\Measurements\PilatusScanGoniometer\20250408\151027
+
+ROI: (209, 60); (285, 125)
+NbofLoops: 5

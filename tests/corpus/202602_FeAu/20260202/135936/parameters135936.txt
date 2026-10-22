@@ -1,0 +1,27 @@
+MV217
+T =300K
+search time zero
+15mJ/cm² 
+800nm
+
+Date Time: 02.02.2026 13:59:36
+
+Selected Stage: PXS 600mm
+Stage Unit: ps
+Start Position: 30.000000
+End Position: 50.000000
+Step Width: 0.200000
+# of Loops: 80
+Velocity: 200.000000
+Acceleration: 600.000000
+
+Exposure Time: 1.000000
+ROI: (271, 86); (283, 123)
+Pump Region: (271, 86); (283, 123)
+Norm Region: (271, 86); (283, 123)
+
+Filename: 135936
+Tmp Path: P:\PilatusPumpProbe\2025\20260202\135936
+Data Path: C:\Users\Labor\Documents\Measurements\PilatusPumpProbe\2025\20260202\135936
+
+Calibration: 0.000000	0.000000	6828690.000000	-143103.000000

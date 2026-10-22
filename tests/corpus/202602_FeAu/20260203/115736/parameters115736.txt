@@ -1,0 +1,28 @@
+AuFe L10-Monolayer X 100
+Au (002) peak
+AuFe (002) peak
+11.5mJ/cm²
+165mW
+1000x810µm²
+
+
+Date Time: 03.02.2026 11:57:36
+
+Delay Vector: -5:1:-1, -0.8:0.2:5, 6:1:100
+
+Delay Loop: 80
+Delay Order: Triangle
+Theta Vector: 22.26
+Theta Loop: 1
+Theta Order: Triangle
+2 Theta Correction: 0.000000
+Inner Parameter: Theta
+Exposure Time: 10.000000s
+Calibration: 0.000000	0.000000	14532900.000000	-306090.000000
+
+
+File Name: 115736
+Tmp Path: P:\PilatusTheta2Theta\2026\20260203\115736
+Data Path: C:\Users\Labor\Documents\Measurements\PilatusTheta2Theta\2026\20260203\115736
+
+ROI: (0, 0); (487, 195)

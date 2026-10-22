@@ -1,0 +1,17 @@
+# Force LF line endings for all text files in the repository,
+# regardless of each contributor's core.autocrlf / core.eol settings.
+* text=auto eol=lf
+
+# Known-binary formats: never apply line-ending conversion
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.pdf  binary
+*.npy  binary
+*.npz  binary
+*.h5   binary
+*.hdf5 binary
+*.nxs  binary
+*.tif  binary
+*.tiff binary

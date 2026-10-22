@@ -1,0 +1,18 @@
+
+
+Date Time: 08.04.2025 16:28:28
+
+Start Position: 11.000000°
+End Position: 15.000000°
+2 Theta Correction: 0.000000
+Step Width: 0.020000°
+Number of Loops: 2
+Exposure Time: 2.000000s
+
+File Name: 162828
+Tmp Path: P:\PilatusTheta2Theta\20250408\162828
+Data Path: C:\Users\Labor\Documents\Measurements\PilatusTheta2Theta\20250408\162828
+
+ROI: (0, 1); (486, 194)
+
+Calib: 0.000000	0.000000	6828690.000000	-143103.000000
