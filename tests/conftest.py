@@ -1,8 +1,10 @@
 """Shared pytest fixtures.
 
-The io/ tests need a filesystem stand-in that several test modules use, so it
-lives here rather than being duplicated per file. The older synthetic-data
-tests (qmapper/rsm) predate this file and still duplicate their own fixtures.
+``FakeFS``, the dict-backed fsspec stand-in the ``--s3`` tests share
+(``s3_test.py``, ``prepare_test.py``), lives here rather than being
+duplicated per file. The ``sys.path`` insert below is the other thing shared
+across modules: it is what lets ``tools_test.py`` import ``tools.thin_corpus``,
+a developer script outside the installed package.
 """
 
 import sys

@@ -32,19 +32,21 @@ whole and what a frame is:
 ``ABSENT``
     No frames at all, for folders whose tests stop at discovery.
 
-Two things this script does *not* do. It never deletes, so a rule changed
-from ``READABLE`` to ``PLACEHOLDER`` would leave the old stub behind --
-regenerate into an empty directory when a rule changes. And it carries the
-source's own line endings, which are CRLF: ``.gitattributes`` normalises
-them to LF on commit, so a fresh clone holds LF text and re-running this
-script over it reports every text file as modified. Nothing downstream
-cares, because :func:`~pxs_import.format.parse_dat` and
+Two things to know. By default this script never deletes, so a rule narrowed
+from ``READABLE`` to ``PLACEHOLDER``/``ABSENT`` would leave the old stub
+behind -- pass ``--clean`` (or ``thin(..., clean=True)``) whenever a rule has
+been narrowed since the last regeneration, to remove ``--out`` first instead.
+And it carries the source's own line endings, which are CRLF:
+``.gitattributes`` normalises them to LF on commit, so a fresh clone holds LF
+text and re-running this script over it reports every text file as modified.
+Nothing downstream cares, because :func:`~pxs_import.format.parse_dat` and
 :func:`~pxs_import.format.parse_parameters` both read binary and strip the
 CR, and ``tests/tools_test.py`` pins exactly that.
 
 Usage::
 
     python tools/thin_corpus.py --source <...>/notebooks --out tests/corpus
+    python tools/thin_corpus.py --source <...>/notebooks --out tests/corpus --clean
 '''
 
 import argparse
@@ -100,6 +102,25 @@ class FolderRule:
 
     dat: str | frozenset[str] = NONE
     frames: str | Mapping[str, str] = ABSENT
+
+    def __post_init__(self) -> None:
+        '''Reject a ``dat`` string that is neither :data:`ALL` nor :data:`NONE`.
+
+        :meth:`flavour` validates ``frames`` the same way, but lazily, only
+        when a rule is actually used; a typo like ``dat='All'`` or
+        ``dat='verbatim'`` would otherwise silently mean "carry no table
+        verbatim" -- loud for a folder whose tables a test parses, silent for
+        the rest. Checked eagerly here, at construction, rather than from
+        :meth:`carries_dat`, so a typo in :data:`RULES` fails as soon as the
+        module imports instead of only for the folders it happens to be
+        asked about.
+
+        Raises:
+            ValueError: ``dat`` is a string other than :data:`ALL`/:data:`NONE`.
+        '''
+        if isinstance(self.dat, str) and self.dat not in (ALL, NONE):
+            raise ValueError(f'unknown dat rule {self.dat!r}, expected '
+                             f'{ALL!r}, {NONE!r}, or a set of scan sources')
 
     def carries_dat(self, source: str) -> bool:
         '''Whether scan ``source``'s signature table is carried verbatim.'''
@@ -160,14 +181,22 @@ RULES: dict[str, FolderRule] = {
 }
 
 
-def thin(source_root: Path, out_root: Path, rules: Mapping[str, FolderRule]) -> None:
+def thin(source_root: Path, out_root: Path, rules: Mapping[str, FolderRule], *,
+         clean: bool = False) -> None:
     '''Write the thinned corpus for every folder named in ``rules``.
 
     Args:
         source_root: Directory holding the real proposal folders.
-        out_root: Directory to write the corpus into. Created as needed and
-            never cleared (see the module docstring).
+        out_root: Directory to write the corpus into. Created as needed.
         rules: Folder name -> what to carry out of it.
+        clean: If true, remove ``out_root`` first, before writing anything.
+            Without it, nothing under ``out_root`` is ever deleted (see the
+            module docstring): a rule narrowed from ``READABLE`` to
+            ``PLACEHOLDER``/``ABSENT`` would otherwise leave the old frames
+            behind, and :meth:`~pathlib.Path.touch` on an existing readable
+            stub does not truncate it, so ``READABLE -> PLACEHOLDER`` would
+            be a silent no-op. Pass this whenever a rule has been narrowed
+            since the last regeneration.
 
     Raises:
         FileNotFoundError: A folder named in ``rules`` is not under
@@ -175,6 +204,8 @@ def thin(source_root: Path, out_root: Path, rules: Mapping[str, FolderRule]) -> 
             missing a whole proposal.
         ValueError: A rule names a frame flavour that does not exist.
     '''
+    if clean and Path(out_root).exists():
+        shutil.rmtree(out_root)
     for folder, rule in rules.items():
         source, out = Path(source_root) / folder, Path(out_root) / folder
         if not source.is_dir():
@@ -278,9 +309,13 @@ def main(argv=None) -> int:
                         help='directory holding the real proposal folders')
     parser.add_argument('--out', required=True, type=Path,
                         help='directory to write the corpus into')
+    parser.add_argument('--clean', action='store_true',
+                        help='remove --out first; needed whenever a rule narrowed '
+                             '(e.g. READABLE to PLACEHOLDER/ABSENT), since this tool '
+                             'otherwise never deletes')
     args = parser.parse_args(argv)
 
-    thin(args.source, args.out, RULES)
+    thin(args.source, args.out, RULES, clean=args.clean)
     print(_report(args.out))
     return 0
 

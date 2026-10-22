@@ -9,6 +9,7 @@ rather than a gate and these run by default. ``tools/thin_corpus.py`` says
 exactly what was carried out of the real proposals and what was replaced.
 '''
 
+import functools
 import pytest, numpy, shutil
 from pathlib import Path
 from pxs_import.format import (discover_scans, number_scans, parse_dat,
@@ -21,7 +22,31 @@ from pxs_import.spice import load_records, migrate_spice
 pytestmark = pytest.mark.corpus
 
 NB = Path(__file__).resolve().parent / 'corpus'
-needs = pytest.mark.skipif(not (NB/'202602_FeAu'/'20260203').exists(), reason='corpus not present')
+
+
+def _requires(path: Path, reason: str):
+    '''Fail, rather than skip, a test whose corpus folder is missing.
+
+    The corpus ships with the repository (unlike in xraydc, where it was
+    gitignored and these guards legitimately meant "not fetched yet"), so a
+    missing ``path`` now means a partial checkout or a botched regeneration,
+    not an environment these tests do not apply to. A ``skipif`` here would
+    leave CI green while silently running far fewer tests; failing instead
+    makes that loss visible. When ``path`` exists (the normal case), the
+    decorated function is returned completely unchanged.
+    '''
+    if path.exists():
+        return lambda fn: fn
+
+    def decorator(fn):
+        @functools.wraps(fn)
+        def wrapper(*args, **kwargs):
+            pytest.fail(f'{path}: {reason}')
+        return wrapper
+    return decorator
+
+
+needs = _requires(NB/'202602_FeAu'/'20260203', 'corpus not present')
 
 
 @needs
@@ -211,8 +236,7 @@ def test_date_range_opens_no_day_outside_it():
     assert not {'20250408', '20250409', '20250424', '20250425'} & set(seen)
 
 
-needs_cryo = pytest.mark.skipif(not (NB/'20151226').exists(),
-                                 reason='cryostat corpus not present')
+needs_cryo = _requires(NB/'20151226', 'cryostat corpus not present')
 
 
 @needs_cryo
@@ -244,8 +268,7 @@ def test_cryostat_corpus_temperatures_reach_the_scan():
     numpy.testing.assert_allclose(h5['measurement/tcryo_readback'][()], 108.00)
 
 
-needs_alignment = pytest.mark.skipif(not (NB/'20250408').exists(),
-                                     reason='alignment corpus not present')
+needs_alignment = _requires(NB/'20250408', 'alignment corpus not present')
 
 
 @needs_alignment

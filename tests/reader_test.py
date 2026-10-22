@@ -45,6 +45,16 @@ def test_format_mapping_table_line():
     assert line.strip() == 'r0001 <- 20260108/100331 (xRSS)'
 
 
+def test_format_mapping_table_line_shows_root_when_tracked():
+    '''Two scans sharing a YYYYMMDD/HHMMSS from different acquisition folders
+    are only told apart by root; the printed table must show it too.'''
+    from pathlib import Path
+    from pxs_import.format import ScanFolder
+    line = format_mapping_table([('r0001', ScanFolder(Path('x'), '20260108', '100331', 'xRSS',
+                                                       root=Path('/data/ProgramA')))])
+    assert line.strip() == 'r0001 <- 20260108/100331 (xRSS) [{}]'.format(Path('/data/ProgramA'))
+
+
 def test_only_filters_without_loading_other_scans(tmp_path, monkeypatch):
     import pxs_import.reader as u
     loaded = []

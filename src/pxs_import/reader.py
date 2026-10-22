@@ -3,9 +3,11 @@
 A UDKM scan folder (:mod:`pxs_import.format`), once parsed and planned
 (:mod:`pxs_import.frames`), is assembled here into a single
 ``silx.io.commonh5.File`` shaped the way nx5d's writers expect (one group per
-scan, frame-guarded ``index``-aligned datasets, ``k-*``/``udkm-*``
-attributes). This module owns that layout; it does not read anything from
-disk itself and knows nothing about nx5d, HDF5-on-disk or image codecs.
+scan, frame-guarded ``index``-aligned datasets, ``k-*`` attributes that nx5d's
+listing harvests, plus every other attribute unprefixed -- there is no
+``udkm-*`` namespace). This module owns that layout; it does not read
+anything from disk itself and knows nothing about nx5d, HDF5-on-disk or image
+codecs.
 '''
 
 import csv
@@ -199,7 +201,7 @@ def build_scan_h5like(scan: ScanFolder, table: DatTable, params: dict, plan: Fra
     # as attributes alone: a constant variable is what an analysis can group
     # and plot against, and `tsample_readback` is already the second entry in
     # the search list `xraydc.cooking.TRSM` walks, so grouping by it needs no
-    # change there. Absent is the normal case (124 of 130 surveyed scans) and
+    # change there. Absent is the normal case (most of the roughly 140 surveyed scans) and
     # is silent; a log belonging to a different scan is not, because the row
     # says which scan it belongs to and a temperature we cannot attribute is
     # worse than none.
@@ -388,9 +390,16 @@ def format_mapping_table(mapping: list[tuple[str, ScanFolder]]) -> str:
             :func:`~pxs_import.format.number_scans`.
 
     Returns:
-        One ``'<scan> <- <source> (<type>)'`` line per entry, joined by ``'\\n'``.
+        One ``'<scan> <- <source> (<type>)'`` line per entry, joined by
+        ``'\\n'``, with a trailing ``' [<root>]'`` wherever ``folder.root``
+        is set -- the CSV :func:`write_mapping_table` writes always carries a
+        ``root`` column, and without it here two scans sharing one
+        ``YYYYMMDD/HHMMSS`` from different acquisition folders print as the
+        same line, with nothing in the table a user actually reads to tell
+        them apart.
     '''
     return '\n'.join(f'{scan} <- {folder.source} ({folder.scan_type})'
+                      + ('' if folder.root is None else f' [{folder.root}]')
                       for scan, folder in mapping)
 
 
@@ -461,9 +470,15 @@ def scans_from_pxs(source: str | Path, *, photon_energy: float = 8048.0,
             right after numbering, *before* :func:`parse_dat` /
             :func:`load_stack`, so unselected scans cost a directory listing
             rather than an image read -- this is what makes one ``pm scan
-            import`` invocation per scan affordable. ``iscan`` still counts
-            positions in the *full* mapping, and ``mapping_file`` is still
-            written in full; the mapping table is not logged or printed.
+            import`` invocation per scan affordable. ``mapping_file`` is
+            still written in full, and the mapping table is not logged or
+            printed. ``iscan`` counts positions in whatever ``mapping`` this
+            call ends up with, which is the *full* mapping only when
+            ``resolved``/``resolved_file`` are also absent: under ``--s3``,
+            :func:`~pxs_import.prepare._s3_import_loop` passes a one-entry
+            ``resolved`` alongside ``only``, so ``mapping`` there already
+            holds just that one scan and ``iscan`` is always ``1``, not that
+            scan's position in the proposal.
         resolved: A scan mapping the caller already worked out, as a JSON
             array of ``[scan_key, folder_path, scan_type]`` triples. When
             given, this function does **no** discovery, no numbering and no

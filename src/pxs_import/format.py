@@ -17,6 +17,7 @@ import re
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+from stat import S_ISDIR, S_ISREG
 
 import numpy
 
@@ -116,7 +117,8 @@ class ScanFolder:
         '''Path to this scan's ``scan data<sfx>.txt`` cryostat log.
 
         Note the space in the name. The file is optional and mostly absent --
-        6 of 130 folders in the surveyed corpus have one.
+        a small minority of the roughly 140 folders in the surveyed corpus
+        have one.
         '''
         return self.path / f'scan data{self.sfx}.txt'
 
@@ -133,9 +135,45 @@ def classify_scan(folder: Path) -> str | None:
     '''
     sfx = folder.name
     for scan_type, pattern in SIGNATURES.items():
-        if (folder / pattern.format(sfx=sfx)).is_file():
+        if _probe(folder / pattern.format(sfx=sfx), S_ISREG, 'file'):
             return scan_type
     return None
+
+
+def _probe(path: Path, predicate, kind: str) -> bool:
+    '''Check one path's type without swallowing a real I/O failure.
+
+    :meth:`~pathlib.Path.is_dir`/:meth:`~pathlib.Path.is_file` catch more than
+    a clean "does not exist": pathlib also treats a handful of OS-specific
+    errors as non-existence and returns ``False`` for them, among them
+    Windows' ``ERROR_NOT_READY`` -- exactly what a network share raises once
+    it drops. Left alone, that turns a share dropping mid-walk into
+    "unclassifiable scan folder" warnings (:func:`classify_scan`) or a
+    silently shorter listing (:func:`discover_scans`) instead of a loud
+    failure, so an import comes out short with nothing to explain it.
+    Re-probed here with :meth:`~pathlib.Path.stat` directly, so only a
+    genuine ``FileNotFoundError`` reads as "does not exist" and every other
+    ``OSError`` is re-raised, naming ``path``.
+
+    Args:
+        path: Path to probe.
+        predicate: ``stat.S_ISDIR`` or ``stat.S_ISREG``.
+        kind: ``'directory'`` or ``'file'``, for the error message.
+
+    Returns:
+        Whether ``path`` is that kind of entry; ``False`` if it genuinely
+        does not exist.
+
+    Raises:
+        OSError: Any other failure to stat ``path``, with ``path`` named.
+    '''
+    try:
+        mode = path.stat().st_mode
+    except FileNotFoundError:
+        return False
+    except OSError as e:
+        raise OSError(f'{path}: cannot check whether this is a {kind}: {e}') from e
+    return predicate(mode)
 
 
 def _listdir(path: Path, lister) -> list[Path]:
@@ -187,6 +225,15 @@ def discover_scans(proposal_root: Path, *, start: str | None = None,
     one with no signature file is skipped with a logged warning naming it as
     ``YYYYMMDD/HHMMSS``.
 
+    A measurement day can turn up twice -- once directly and once behind a
+    year directory, or behind two year directories at once, since a year's
+    name need not agree with the dates filed under it. The first one found
+    (direct date directories before year-nested ones, both in sorted-name
+    order) wins and the other is skipped entirely, with a warning naming both
+    paths -- the same coalesce-and-warn policy
+    :func:`~pxs_import.sources.discover_all` applies across several sources,
+    applied here within one.
+
     ``start``/``end`` select measurement days, and are applied **before any
     day is descended into**. That ordering is the whole cost argument: the
     program folders hold every beamtime since 2011, and classifying their
@@ -210,23 +257,41 @@ def discover_scans(proposal_root: Path, *, start: str | None = None,
             only way to pin the cost property above.
 
     Returns:
-        Scan folders sorted by ``date + time``. Days are sorted by their own
-        name rather than by where they were found: a year directory's name
-        does not have to agree with the dates inside it, so ordering by
-        discovery would interleave two year directories wrongly.
+        Scan folders sorted by ``date + time``, each stamped with
+        ``proposal_root`` resolved (:meth:`~pathlib.Path.resolve`) as its
+        ``root``, so that two spellings of one directory (``.``/absolute,
+        a symlink/its target) compare equal wherever ``root`` is used for
+        identity. Days are sorted by their own name rather than by where
+        they were found: a year directory's name does not have to agree
+        with the dates inside it, so ordering by discovery would interleave
+        two year directories wrongly.
     '''
+    root = proposal_root.resolve()
+
     if _DATE_RE.match(proposal_root.name):
         date_dirs = [proposal_root]
     else:
         date_dirs = []
+        first_seen: dict[str, Path] = {}
+
+        def _keep_day(candidate: Path) -> None:
+            first = first_seen.get(candidate.name)
+            if first is None:
+                first_seen[candidate.name] = candidate
+                date_dirs.append(candidate)
+            else:
+                logger.warning('%s: duplicate measurement day, keeping %s and ignoring %s',
+                                candidate.name, first, candidate)
+
         for child in _listdir(proposal_root, lister):
-            if not child.is_dir():
+            if not _probe(child, S_ISDIR, 'directory'):
                 continue
             if _DATE_RE.match(child.name):
-                date_dirs.append(child)
+                _keep_day(child)
             elif _YEAR_RE.match(child.name):
-                date_dirs += [d for d in _listdir(child, lister)
-                              if d.is_dir() and _DATE_RE.match(d.name)]
+                for d in _listdir(child, lister):
+                    if _probe(d, S_ISDIR, 'directory') and _DATE_RE.match(d.name):
+                        _keep_day(d)
         date_dirs.sort(key=lambda d: d.name)
 
     # Before descending, not after: see the cost note in the docstring.
@@ -238,7 +303,7 @@ def discover_scans(proposal_root: Path, *, start: str | None = None,
     scans = []
     for date_dir in date_dirs:
         for scan_dir in _listdir(date_dir, lister):
-            if not (scan_dir.is_dir() and _TIME_RE.match(scan_dir.name)):
+            if not (_probe(scan_dir, S_ISDIR, 'directory') and _TIME_RE.match(scan_dir.name)):
                 continue
             scan_type = classify_scan(scan_dir)
             if scan_type is None:
@@ -246,7 +311,7 @@ def discover_scans(proposal_root: Path, *, start: str | None = None,
                                 date_dir.name, scan_dir.name)
                 continue
             scans.append(ScanFolder(scan_dir, date_dir.name, scan_dir.name, scan_type,
-                                     root=proposal_root))
+                                     root=root))
     return scans
 
 

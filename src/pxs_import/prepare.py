@@ -248,7 +248,15 @@ def _s3_import_loop(*, fs, pm, runner, mapping, proposal_root, target_url,
 
     for scan_name, folder in mapping:
         recorded = manifest.get(scan_name)
-        if not force and recorded is not None and recorded.get('source') == folder.source:
+        # `source` alone (`YYYYMMDD/HHMMSS`) does not tell two scans apart
+        # when they came from different acquisition folders -- only `root`
+        # does. An entry written before `root` existed has no such key and is
+        # honoured on `source` alone, same as before; one that does have it
+        # must agree on both to count as the same scan.
+        folder_root = '' if folder.root is None else str(folder.root)
+        root_matches = recorded is None or 'root' not in recorded or recorded['root'] == folder_root
+        if (not force and recorded is not None and recorded.get('source') == folder.source
+                and root_matches):
             skipped.append(scan_name)
             continue
 
@@ -372,9 +380,11 @@ def prepare_proposal(proposal_root: Path, *, single_file: bool = False,
         FileExistsError: There is already import output at the target and
             ``force`` is false; or, under ``s3_bucket``, the remote spice
             prefix is non-empty and ``force_spice`` is false.
-        RuntimeError: ``s3_bucket`` was given, no filesystem was injected
-            and no credential profile is configured; or a scan's import
-            failed (see :func:`_s3_import_loop`).
+        RuntimeError: The ``base`` route was used with no ``start``; or no
+            scans were found; or scans would be renumbered since the last
+            import and ``force`` is false; or ``s3_bucket`` was given, no
+            filesystem was injected and no credential profile is configured;
+            or a scan's import failed (see :func:`_s3_import_loop`).
     '''
     if pm is None:
         pm = _resolve_pm()
@@ -395,7 +405,13 @@ def prepare_proposal(proposal_root: Path, *, single_file: bool = False,
     sources = [Path(p).resolve() for p in sources] if sources else None
     resolved_sources, route = resolve_sources(proposal_root, explicit=sources, base=base)
     if route == 'base' and start is None:
-        raise SystemExit(
+        # A RuntimeError, not a SystemExit: this function is the one a future
+        # measurement-PC GUI would call directly, and a CLI-only exception
+        # sitting in it leaves such a caller with no way to catch the refusal
+        # and show it in its own terms. `main` below still turns it into the
+        # same stderr message and exit code 1, through the RuntimeError
+        # handler every other orchestration failure already uses.
+        raise RuntimeError(
             'refusing to import from the acquisition program folders without a date '
             'range: they hold every beamtime since 2011. Pass --from (and optionally '
             '--to), or point at a folder that already holds the measurement days.')

@@ -138,14 +138,13 @@ def test_temperatures_become_variables_and_a_listing_attribute(tmp_path):
 
 
 def test_no_temperature_file_is_silent(tmp_path, caplog):
-    '''Absent in 124 of 130 real scans; a warning would be pure noise.'''
+    '''Absent in most of the roughly 140 real scans; a warning would be pure noise.'''
     d = write_srsm(tmp_path/'20260108'/'115550', n_rows=3)
     with caplog.at_level(logging.WARNING):
         h5 = _build(d, 'sRSM')
     assert 'measurement/tsample_readback' not in h5
     assert 'k-header:tsample' not in h5.attrs
-    assert 'temperature' not in caplog.text.lower()
-    assert 'cryostat' not in caplog.text.lower()
+    assert caplog.records == []
 
 
 def test_temperature_from_another_scan_is_refused(tmp_path, caplog):

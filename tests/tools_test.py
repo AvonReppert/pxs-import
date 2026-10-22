@@ -157,3 +157,28 @@ def test_an_unknown_frame_flavour_is_refused(tmp_path):
 
     with pytest.raises(ValueError, match='readable'):
         thin(source, out, rules)
+
+
+def test_an_unknown_dat_rule_is_refused():
+    '''A typo like 'All' or 'verbatim' must not quietly carry no table.'''
+    with pytest.raises(ValueError, match='verbatim'):
+        FolderRule(dat='verbatim')
+
+
+def test_clean_removes_stale_frames_a_narrowed_rule_would_otherwise_leave(tmp_path):
+    '''READABLE -> PLACEHOLDER is a no-op without --clean: `touch` does not
+    truncate an existing stub, and nothing deletes the old one.'''
+    source, out = tmp_path / 'source', tmp_path / 'out'
+    _build_source(source)
+    wide = {'PROP': FolderRule(frames=READABLE)}
+    narrow = {'PROP': FolderRule(frames=PLACEHOLDER)}
+
+    thin(source, out, wide)
+    stub = next((out / 'PROP').rglob('*.tif'))
+    assert stub.stat().st_size > 0
+
+    thin(source, out, narrow)                  # no clean: stale real frame survives
+    assert stub.stat().st_size > 0
+
+    thin(source, out, narrow, clean=True)
+    assert stub.stat().st_size == 0

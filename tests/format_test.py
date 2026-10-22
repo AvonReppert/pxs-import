@@ -283,6 +283,17 @@ def test_scan_temperatures_splits_rows_on_whitespace_not_tabs(tmp_path):
     assert parse_scan_temperatures(path)[:2] == (108.00, 108.77)
 
 
+def test_scan_temperatures_last_row_has_no_trailing_tab(tmp_path):
+    '''Earlier rows of a real cryostat log carry a trailing tab; its last
+    (the scan's own) row does not.'''
+    folder = write_srsm(tmp_path / '20151226' / '000051', n_rows=2)
+    path = write_scan_temperatures(folder)
+    rows = [line for line in path.read_text(encoding='windows-1252').splitlines()
+            if line and not line.startswith('%')]
+    assert rows[0].endswith('\t')
+    assert not rows[-1].endswith('\t')
+
+
 def test_scan_temperatures_absent_file_is_none(tmp_path):
     folder = write_srsm(tmp_path / '20151226' / '000051', n_rows=2)
     assert parse_scan_temperatures(folder / 'scan data000051.txt') is None
@@ -342,3 +353,41 @@ def test_discover_scans_names_an_unreadable_directory(tmp_path):
 
     with pytest.raises(OSError, match='20250408'):
         discover_scans(tmp_path, lister=failing)
+
+
+def test_discover_scans_raises_rather_than_swallows_a_dropped_share(tmp_path, monkeypatch):
+    '''``is_dir()`` treats Windows' ERROR_NOT_READY -- what a dropped network
+    share raises -- as "doesn't exist" and swallows it, which would otherwise
+    turn a real I/O failure into a silent "unclassifiable scan folder".'''
+    write_alignment(tmp_path / '20250408' / '151027', n_rows=2)
+    real_stat = Path.stat
+
+    def failing_stat(self, *a, **kw):
+        if self.name == '151027':
+            raise OSError(21, 'The device is not ready')
+        return real_stat(self, *a, **kw)
+
+    monkeypatch.setattr(Path, 'stat', failing_stat)
+    with pytest.raises(OSError, match='151027'):
+        discover_scans(tmp_path)
+
+
+def test_discover_scans_resolves_the_stamped_root(tmp_path, monkeypatch):
+    '''Two spellings of one directory must compare equal through ``root``.'''
+    write_alignment(tmp_path / '20250408' / '151027', n_rows=2)
+    monkeypatch.chdir(tmp_path)
+    scans = discover_scans(Path('.'))
+    assert scans[0].root == tmp_path.resolve()
+    assert scans[0].root.is_absolute()
+
+
+def test_discover_scans_dedupes_the_same_day_under_two_year_folders(tmp_path, caplog):
+    '''A year directory's name need not agree with the dates filed under it,
+    so the same day can legitimately turn up under two of them at once.'''
+    write_alignment(tmp_path / '2025' / '20260108' / '151027', n_rows=2)
+    write_alignment(tmp_path / '2026' / '20260108' / '151027', n_rows=2)
+    with caplog.at_level(logging.WARNING):
+        scans = discover_scans(tmp_path)
+    assert [s.source for s in scans] == ['20260108/151027']
+    assert str(tmp_path / '2025' / '20260108') in caplog.text
+    assert str(tmp_path / '2026' / '20260108') in caplog.text

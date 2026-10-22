@@ -61,7 +61,8 @@ def write_scan_temperatures(folder: Path, rows=((12.15, 15.25), (108.00, 108.77)
     makes the association checkable rather than positional.
 
     Reproduces the real file's quirk exactly: the header is tab-separated,
-    the data rows are space-separated with a trailing tab.
+    the data rows are space-separated with a trailing tab -- except the
+    **last** row, which the real files write with no trailing tab at all.
 
     Args:
         folder: The scan folder; its name supplies the ``sfx``.
@@ -76,7 +77,8 @@ def write_scan_temperatures(folder: Path, rows=((12.15, 15.25), (108.00, 108.77)
     for i, (ta, tb) in enumerate(rows):
         last = i == len(rows) - 1
         d, t = (day, time) if last else ('20151223', f'0248{i:02d}')
-        lines.append(f'{ta:.2f} {tb:.2f} {d} {t}\t')
+        suffix = '' if last else '\t'
+        lines.append(f'{ta:.2f} {tb:.2f} {d} {t}{suffix}')
     path = folder / f'scan data{sfx}.txt'
     path.write_text('\r\n'.join(lines) + '\r\n', encoding='windows-1252', newline='')
     return path

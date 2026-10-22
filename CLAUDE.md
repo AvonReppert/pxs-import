@@ -98,7 +98,7 @@ module.
 
 ### Listing attributes — another string-resolved contract
 
-`build_scan_h5like` ([reader.py:125](src/pxs_import/reader.py#L125)) writes
+`build_scan_h5like` ([reader.py:127](src/pxs_import/reader.py#L127)) writes
 two *deliberately* different families of root attribute, and the split is not
 cosmetic. nx5d's `_get_header_items` (`nx5d/repo/universal.py`) harvests
 **only** `k-header:*` into the scan summary, stripping the prefix; `_list`
@@ -125,8 +125,8 @@ writes are untouched.
 `tsample` comes from a different file again: `scan data<sfx>.txt`, a running
 cryostat log copied into each scan folder, one row longer each time, whose
 **last** row is that scan's own and carries its own `Day`/`Time` to prove it.
-Present in 6 of 130 surveyed folders, all 2015 — absence is the normal case
-and is silent. The row's stamp is checked against the scan, and a log ending
+Present in a small minority of the roughly 140 surveyed folders, all 2015 —
+absence is the normal case and is silent. The row's stamp is checked against the scan, and a log ending
 elsewhere is refused with a warning rather than written. Its two values also
 land as the index-aligned variables `measurement/tsample_readback` and
 `measurement/tcryo_readback`; the first name is deliberate, being the second
@@ -149,7 +149,7 @@ folder, and a `k-header:notes` would repeat the whole string in `others`. The
 same reasoning keeps the `parameters*.txt` entries out of `k-header:` — 12 to
 17 of them per scan would make `others` unreadable. Everything outside `k-*`
 is **unprefixed, by request**: there is no `udkm-` attribute namespace any
-more, and `RESERVED_ATTRS` ([reader.py:116](src/pxs_import/reader.py#L116))
+more, and `RESERVED_ATTRS` ([reader.py:118](src/pxs_import/reader.py#L118))
 names the nine the module owns.
 
 That sweep is generic on purpose: the key set differs per scan type (`File
@@ -161,7 +161,7 @@ its own use keep derived attributes as well (`k-header:integration`,
 corpus` pins the real per-type vocabulary across all 71 parameters files.
 
 Each key gets exactly **one** attribute: the value parsed where
-`numeric_value` ([format.py:358](src/pxs_import/format.py#L358)) finds an
+`numeric_value` ([format.py:423](src/pxs_import/format.py#L423)) finds an
 unambiguous number, the raw string where it does not. Four shapes are
 recognised — a region as four ints, tab-separated numbers as a float list, a
 bare integer as `int`, a decimal with an optional `°`/`s` suffix as `float` —

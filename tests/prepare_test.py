@@ -380,6 +380,21 @@ def test_manifest_records_the_root_and_old_entries_still_skip(tmp_path, fake_fs)
     assert res.skipped
 
 
+def test_manifest_skip_also_checks_root_not_just_source(tmp_path, fake_fs):
+    '''Two scans with the same YYYYMMDD/HHMMSS from different acquisition
+    folders are only told apart by `root` -- the skip check must not re-use a
+    manifest entry recorded under a different one.'''
+    root = _proposal(tmp_path/'P')
+    url = manifest_url('pxsrepo', 'P')
+    write_manifest(fake_fs, url, {'r0001': {'source': '20260108/115550', 'imported': 'T',
+                                            'root': str(tmp_path/'elsewhere')}})
+    calls = []
+    res = prepare_proposal(root, s3_bucket='pxsrepo', fs=fake_fs,
+                           runner=_fake_pm(fake_fs, 's3://pxsrepo/P/{scan}.zarr', calls))
+    assert res.skipped == [] and 'r0001' in res.imported
+    assert read_manifest(fake_fs, url)['r0001']['root'] == str(root.resolve())
+
+
 def test_empty_import_is_refused_and_keeps_the_previous_mapping(tmp_path):
     '''A typo in --from must not look like a successful import.'''
     src = tmp_path/'src'
@@ -447,12 +462,26 @@ def test_workspace_is_created_even_with_output_root(tmp_path):
 
 
 def test_base_route_without_from_is_refused(tmp_path):
-    '''The program folders hold every beamtime since 2011.'''
+    '''The program folders hold every beamtime since 2011.
+
+    A RuntimeError, not a SystemExit: `prepare_proposal` is the function a
+    GUI would call directly, and it must hand a refusal back as something
+    its caller can catch, not force a process exit.
+    '''
     ws = tmp_path/'prop'; ws.mkdir()
     base = tmp_path/'base'
     write_alignment(base/'PilatusScanGoniometer'/'20250408'/'151027', n_rows=2)
-    with pytest.raises(SystemExit):
+    with pytest.raises(RuntimeError, match='date'):
         prepare_proposal(ws, base=base, pm=['pm'], runner=lambda cmd, **kw: None)
+
+
+def test_main_still_exits_1_on_base_route_without_from(tmp_path, capsys):
+    '''The CLI wrapper still turns the refusal into a clean exit, same as before.'''
+    ws = tmp_path/'prop'; ws.mkdir()
+    base = tmp_path/'base'
+    write_alignment(base/'PilatusScanGoniometer'/'20250408'/'151027', n_rows=2)
+    assert main([str(ws), '--base', str(base)]) == 1
+    assert 'date' in capsys.readouterr().err
 
 
 def test_sources_merge_into_one_resolved_mapping(tmp_path):
